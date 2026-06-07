@@ -4,64 +4,49 @@ from datetime import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from supabase import create_client
 
-# ... (lanjutan kode lainnya)
-
-# 1. SETUP KREDENSIAL (Diambil dari GitHub Secrets atau Environment Variable)
+# Setup Supabase
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Error: SUPABASE_URL atau SUPABASE_KEY tidak ditemukan di environment!")
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 2. SETUP MODEL LLM (Tanpa 4-bit, langsung loading ke CPU)
+# Setup Model - Paksa CPU
 model_id = "Qwen/Qwen1.5-1.8B-Chat"
-
-print("Memuat tokenizer dan model ke CPU...")
+print("Loading model ke CPU...")
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-# Load langsung ke CPU (tanpa bnb_config)
+# PENTING: Hapus device_map="auto" atau "cpu" di sini agar tidak memicu library accelerate
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
-    torch_dtype="auto", # Membiarkan torch memilih tipe data yang pas
-    device_map="cpu",   # Paksa jalan di CPU
+    torch_dtype=torch.float32, 
     trust_remote_code=True
 )
 
-# 3. FUNGSI SUMMARIZER
 def summarize_magma_activity(raw_data):
-    system_prompt = """Kamu adalah petugas BPBD di Indonesia. 
-Tugasmu merangkum laporan teknis gunung berapi menjadi SATU PARAGRAF narasi (maksimal 3 kalimat) untuk pengumuman ke warga.
-Gunakan Bahasa Indonesia baku (bukan Bahasa Melayu). 
-Bahasanya harus menenangkan, mudah dipahami, dan langsung sebutkan status gunung di awal kalimat."""
-
+    # System prompt
+    system_prompt = "Kamu petugas BPBD. Rangkum laporan gunung berapi menjadi satu paragraf."
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "Buat pengumuman kondisi terkini dari data ini: Gunung jelas. Asap kawah nihil. Cuaca berawan. Terekam 5 kali gempa Vulkanik Dalam dengan amplitudo 10-20 mm, durasi 15 detik. Status Level II (Waspada)."},
-        {"role": "assistant", "content": "Saat ini Gunung berada pada status Waspada (Level II). Berdasarkan pantauan terkini, cuaca berawan dan masih terekam beberapa kali aktivitas gempa vulkanik di dalam gunung. Warga diimbau untuk tetap tenang dan mematuhi batas jarak aman dari kawah."},
-        {"role": "user", "content": f"Buat pengumuman kondisi terkini dari data ini: {raw_data}"}
+        {"role": "user", "content": f"Rangkum: {raw_data}"}
     ]
     
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to("cpu")
+    
+    # Deteksi device secara manual
+    device = "cpu"
+    model_inputs = tokenizer([text], return_tensors="pt").to(device)
+    model.to(device) # Paksa model ke CPU
+    
     generated_ids = model.generate(
         model_inputs.input_ids,
-        max_new_tokens=100, 
-        temperature=0.1,    
-        repetition_penalty=1.1
+        max_new_tokens=50
     )
     
     generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
     return tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
-# 4. PIPELINE UTAMA
+# Pipeline
 def process_and_save_data(gunung):
-    print(f"\nMemproses {gunung['nama']}...")
-    
-    # Mock data (nanti bisa diganti dengan request real ke API MAGMA)
-    data_mentah = f"Cuaca {gunung['cuaca']}. Status Level {gunung['level_code']} ({gunung['level_name']}). Aktivitas terpantau normal."
-    
+    data_mentah = f"Status {gunung['level_name']}. Aktivitas normal."
     summary = summarize_magma_activity(data_mentah)
     
     payload = {
@@ -75,20 +60,14 @@ def process_and_save_data(gunung):
         "summary": summary,
         "weather": gunung["cuaca"]
     }
-
+    
     try:
         supabase.table('volcano_summarizer').insert(payload).execute()
-        print(f"✅ Berhasil menyimpan {gunung['nama']} ke Cloud.")
+        print(f"✅ Sukses: {gunung['nama']}")
     except Exception as e:
-        print(f"❌ Gagal menyimpan {gunung['nama']}: {e}")
+        print(f"❌ Error: {e}")
 
-# 5. EKSEKUSI
-daftar_gunung = [
-    {"nama": "Gunung Merapi", "key": "merapi", "level_code": 3, "level_name": "Siaga", "cuaca": "Cerah"},
-    {"nama": "Gunung Agung", "key": "agung", "level_code": 1, "level_name": "Normal", "cuaca": "Berawan"},
-    {"nama": "Gunung Rinjani", "key": "rinjani", "level_code": 2, "level_name": "Waspada", "cuaca": "Cerah"}
-]
-
+# Eksekusi
 if __name__ == "__main__":
-    for g in daftar_gunung:
-        process_and_save_data(g)
+    g = {"nama": "Gunung Merapi", "key": "merapi", "level_code": 3, "level_name": "Siaga", "cuaca": "Cerah"}
+    process_and_save_data(g)
