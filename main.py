@@ -13,21 +13,18 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 2. SETUP MODEL LLM
+# 2. SETUP MODEL LLM (Tanpa 4-bit, langsung loading ke CPU)
 model_id = "Qwen/Qwen1.5-1.8B-Chat"
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16
-)
 
-print("Memuat tokenizer dan model...")
+print("Memuat tokenizer dan model ke CPU...")
 tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+# Load langsung ke CPU (tanpa bnb_config)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
-    quantization_config=bnb_config,
-    device_map="auto"
+    torch_dtype="auto", # Membiarkan torch memilih tipe data yang pas
+    device_map="cpu",   # Paksa jalan di CPU
+    trust_remote_code=True
 )
 
 # 3. FUNGSI SUMMARIZER
@@ -45,7 +42,7 @@ Bahasanya harus menenangkan, mudah dipahami, dan langsung sebutkan status gunung
     ]
     
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to("cuda")
+    model_inputs = tokenizer([text], return_tensors="pt").to("cpu")
     generated_ids = model.generate(
         model_inputs.input_ids,
         max_new_tokens=100, 
