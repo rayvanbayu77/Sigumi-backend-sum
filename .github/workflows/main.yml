@@ -21,6 +21,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+        # --- TAMBAHKAN BARIS INI ---
+      - name: Debug - Cek Isi File main.py
+        run: cat main.py
+      # ---------------------------
+
       - name: Run script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
