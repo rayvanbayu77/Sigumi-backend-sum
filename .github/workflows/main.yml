@@ -1,10 +1,8 @@
 name: AI Summarizer Automation
-
 on:
   schedule:
-    # 0 = menit ke-0, */6 = tiap 6 jam, * = tiap hari, bulan, hari dalam seminggu
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Supaya bisa dijalankan manual untuk tes
+  workflow_dispatch:
 
 jobs:
   run-summarizer:
@@ -24,23 +22,18 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install transformers supabase requests
 
-        # --- TAMBAHKAN BARIS INI ---
-      - name: Debug - Cek Isi File main.py
-        run: cat bot.py
-      # ---------------------------
+      - name: Debug - List semua file
+        run: |
+          ls -la
+          find . -name "*.py" -type f
+          echo "=== ISI BOT.PY ==="
+          cat bot.py
 
-      - name : debug -list semua file
-        run : ls-la
+      - name: Fix cuda ke cpu
+        run: |
+          find . -name "*.py" -type f -exec sed -i 's/\.to("cuda")/\.to("cpu")/g' {} \;
+          find . -name "*.py" -type f -exec sed -i "s/\.to('cuda')/\.to('cpu')/g" {} \;
 
-      - name: Fix cuda ke cpu di semua file py
-        run: sed -i 's/\.to("cuda")/\.to("cpu")/g' *.py
-
-      - name: Run script
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python bot.py
-      
       - name: Run script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
