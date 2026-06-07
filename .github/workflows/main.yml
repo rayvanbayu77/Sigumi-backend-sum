@@ -29,6 +29,18 @@ jobs:
         run: cat bot.py
       # ---------------------------
 
+      - name : debug -list semua file
+        run : ls-la
+
+      - name: Fix cuda ke cpu di semua file py
+        run: sed -i 's/\.to("cuda")/\.to("cpu")/g' *.py
+
+      - name: Run script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python bot.py
+      
       - name: Run script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
