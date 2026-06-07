@@ -1,0 +1,41 @@
+name: AI Summarizer Automation
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-summarizer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install transformers supabase requests
+
+      - name: Debug - List semua file
+        run: |
+          ls -la
+          find . -name "*.py" -type f
+          echo "=== ISI BOT.PY ==="
+          cat bot.py
+
+      - name: Fix cuda ke cpu
+        run: |
+          find . -name "*.py" -type f -exec sed -i 's/\.to("cuda")/\.to("cpu")/g' {} \;
+          find . -name "*.py" -type f -exec sed -i "s/\.to('cuda')/\.to('cpu')/g" {} \;
+
+      - name: Run script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python bot.py
