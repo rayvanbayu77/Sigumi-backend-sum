@@ -1,8 +1,10 @@
 import os
 import torch
 from datetime import datetime
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from supabase import create_client
+
+# ... (lanjutan kode lainnya)
 
 # 1. SETUP KREDENSIAL (Diambil dari GitHub Secrets atau Environment Variable)
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
