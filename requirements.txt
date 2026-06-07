@@ -1,0 +1,6 @@
+transformers
+accelerate
+bitsandbytes
+supabase
+requests
+torch
