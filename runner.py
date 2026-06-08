@@ -25,12 +25,35 @@ model.to("cpu")
 
 # 3. FUNGSI SUMMARIZER
 def summarize_magma_activity(raw_data):
-    system_prompt = """Kamu adalah petugas BPBD di Indonesia. 
-Tugasmu merangkum laporan teknis gunung berapi menjadi SATU PARAGRAF narasi (maksimal 3 kalimat) untuk pengumuman ke warga.
-Gunakan Bahasa Indonesia baku. Bahasanya harus menenangkan, mudah dipahami, dan langsung sebutkan status gunung di awal kalimat."""
+    # System prompt baru: Objektif, Informatif, Akurat, Tetap 3 Kalimat
+    system_prompt = """Kamu adalah sistem pusat informasi bencana. 
+Tugasmu merangkum laporan teknis gunung berapi menjadi pengumuman yang informatif, akurat, dan mudah dipahami masyarakat umum.
 
+Patuhi aturan ketat berikut:
+1. Sampaikan data secara objektif dan faktual apa adanya, tidak perlu menambahkan kalimat penenang yang dibuat-buat.
+2. Hasil rangkuman WAJIB terdiri dari TEPAT 3 KALIMAT (tidak kurang, tidak lebih).
+3. Struktur Kalimat:
+   - Kalimat 1: Langsung sebutkan nama gunung dan status levelnya saat ini.
+   - Kalimat 2: Ringkasan kondisi cuaca dan visual kawah (asap/visual gunung).
+   - Kalimat 3: Ringkasan aktivitas kegempaan terkini dari data.
+4. Gunakan Bahasa Indonesia baku yang ringkas dan tegas."""
+
+    # Contoh Few-Shot diperbarui agar AI meniru struktur objektif ini
     messages = [
         {"role": "system", "content": system_prompt},
+        
+        # --- CONTOH FEW-SHOT (Panduan Gaya Bahasa) ---
+        {
+            "role": "user", 
+            "content": "Buat pengumuman kondisi terkini dari data ini: Cuaca Berawan. Status Level II (Waspada). Asap kawah nihil. Terekam 5 kali gempa Vulkanik Dalam dengan amplitudo 10-20 mm."
+        },
+        {
+            "role": "assistant", 
+            "content": "Saat ini Gunung berada pada status Level II (Waspada). Berdasarkan pengamatan visual, cuaca di sekitar area gunung terpantau berawan dan asap kawah tidak teramati. Dari data kegempaan, tercatat telah terjadi 5 kali aktivitas gempa vulkanik dalam dengan amplitudo mencapai 10-20 mm."
+        },
+        # ----------------------------------------------
+        
+        # Input Data Asli yang Berjalan di Pipeline
         {"role": "user", "content": f"Buat pengumuman kondisi terkini dari data ini: {raw_data}"}
     ]
     
@@ -39,8 +62,8 @@ Gunakan Bahasa Indonesia baku. Bahasanya harus menenangkan, mudah dipahami, dan 
     
     out = model.generate(
         inputs.input_ids,
-        max_new_tokens=100,
-        temperature=0.1,
+        max_new_tokens=120, # Ditambah sedikit agar kalimat ke-3 tidak terpotong di tengah jalan
+        temperature=0.1,    # Suhu rendah agar AI tetap kaku mengikuti aturan fakta
         repetition_penalty=1.1
     )
     
