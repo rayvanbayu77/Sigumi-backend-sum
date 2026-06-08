@@ -92,7 +92,7 @@ def process_and_save_data(gunung):
     }
 
     try:
-        supabase.table('volcano_summarizer').insert(payload).execute()
+        supabase.table('volcano_summarizer').upsert(payload).execute()
         print(f"✅ Berhasil! Rangkuman {gunung['nama']} tersimpan di Supabase.")
     except Exception as e:
         print(f"❌ Gagal menyimpan {gunung['nama']} ke database: {e}")
