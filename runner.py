@@ -92,8 +92,12 @@ def process_and_save_data(gunung):
     }
 
     try:
-        supabase.table('volcano_summarizer').upsert(payload).execute()
-        print(f"✅ Berhasil! Rangkuman {gunung['nama']} tersimpan di Supabase.")
+        # Tambahkan parameter on_conflict yang berisi kolom-kolom kunci uniknya
+        supabase.table('volcano_summarizer').upsert(
+            payload, 
+            on_conflict='volcano_key,report_date,period_start'
+        ).execute()
+        print(f"✅ Berhasil! Rangkuman {gunung['nama']} tersimpan/terupdate di Supabase.")
     except Exception as e:
         print(f"❌ Gagal menyimpan {gunung['nama']} ke database: {e}")
 
